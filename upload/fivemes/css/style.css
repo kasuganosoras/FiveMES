@@ -1,0 +1,4 @@
+div#rpm, div#speed, div#temp, div#test, div#level, div#load {
+    display: inline-block;
+    margin-right: 30px;
+}

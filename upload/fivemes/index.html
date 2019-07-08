@@ -1,0 +1,209 @@
+<html lang="zh_CN">
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=11">
+		<meta name="application-name" content="FiveMES">
+		<meta name="msapplication-TileColor" content="#F1F1F1">
+		<meta name="theme-color" content="#333333">
+		<meta name="description" content="">
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css" crossorigin="anonymous">
+		<link href="https://netdna.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+		<link rel="stylesheet" type="text/css" href="css/style.css" />
+		<title>FiveMES by Akkariin</title>
+		<style type="text/css">
+			body {background: #333;color: #000;}
+			.arrow {position:relative;left:-16px;top:48px;}
+			.rightui {position:relative;left:-16px;top:-80px;}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<div class="text-center" style="margin-top: 64px;margin-bottom: 128px;">
+				<h2 class="arrow"><span id="arleft"><i class="fa fa-arrow-left"></i></span>&nbsp;&nbsp;&nbsp;&nbsp;<span id="arright"><i class="fa fa-arrow-right"></i></span></h2>
+				<div id="jsGauges"></div>
+				<h2 id="gearui" style="position:relative;top:-100px;left:-155px;color:#FFF;"></h2>
+				<h3 class="rightui"><span id="handbrake"><i class="fa fa-hand-stop-o"></i></span>&nbsp;&nbsp;&nbsp;
+				<span id="light"><i class="fa fa-lightbulb-o"></i></span>&nbsp;&nbsp;&nbsp;
+				<span id="hlight"><i class="fa fa-flash"></i></span></h3>
+			</div>
+		</div>
+		<script src="https://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js" crossorigin="anonymous"></script>
+		<script>
+			/* FiveMES configuration start */
+			var use_SSL = false;
+			var ws_host = "example.com";
+			var ws_port = 9230;
+			/* FiveMES configuration end */
+			
+			/* Don't change anything following this line */
+			var ws;
+			var connected = false;
+			var c_id;
+			var s_speed = 0;
+			var s_rpm = 0;
+			var s_gear = 0;
+			var s_IL = 0;
+			var s_Handbrake = false;
+			var s_LS_r = false;
+			var s_LS_o = false;
+			var s_LS_h = false;
+			
+			var left_on = false;
+			var right_on = false;
+			
+			var handbrake_on = false;
+			var light_on = false;
+			var hlight_on = false;
+			
+			setInterval(function() {
+				if(left_on && right_on) {
+					if(arleft.style.color == "rgb(14, 255, 0)") {
+						arleft.style.color = "#000";
+						arright.style.color = "#000";
+					} else {
+						arleft.style.color = "rgb(14, 255, 0)";
+						arright.style.color = "rgb(14, 255, 0)";
+					}
+				} else {
+					if(left_on) {
+						if(arleft.style.color == "rgb(14, 255, 0)") {
+							arleft.style.color = "#000";
+						} else {
+							arleft.style.color = "rgb(14, 255, 0)";
+						}
+					} else {
+						arleft.style.color = "#000";
+					}
+					if(right_on) {
+						if(arright.style.color == "rgb(14, 255, 0)") {
+							arright.style.color = "#000";
+						} else {
+							arright.style.color = "rgb(14, 255, 0)";
+						}
+					} else {
+						arright.style.color = "#000";
+					}
+				}
+				if(handbrake_on) {
+					handbrake.style.color = "rgb(189, 0, 0)";
+				} else {
+					handbrake.style.color = "#000";
+				}
+				if(light_on) {
+					light.style.color = "rgb(177, 148, 0)";
+				} else {
+					light.style.color = "#000";
+				}
+				if(hlight_on) {
+					hlight.style.color = "#0077bf";
+				} else {
+					hlight.style.color = "#000";
+				}
+			}, 500);
+			function websocket () {
+				pl = use_SSL ? "wss" : "ws";
+				ws = new WebSocket(`${pl}://${ws_host}:${ws_port}/`);
+				ws.onopen = function(event){
+					console.log('Connect successful');
+					connected = true;
+					connect();
+				};
+				ws.onmessage = function (event) {
+					var message = JSON.parse(event.data);
+					switch(message.action) {
+						case 'update':
+							console.log("速度：" + message.speed + "，转速：" + message.rpm + "，档位：" + message.gear
+								+ "，转向灯：" + message.IL + "，手刹：" + message.Handbrake + "，大灯 R" + message.LS_r + "，大灯开启：" + message.LS_o + "，远光灯：" + message.LS_h);
+							s_speed = message.speed;
+							s_rpm = message.rpm;
+							s_gear = message.gear;
+							s_IL = message.IL;
+							s_Handbrake = message.Handbrake;
+							s_LS_r = message.LS_r;
+							s_LS_o = message.LS_o;
+							s_LS_h = message.LS_h;
+							
+							handbrake_on = stringtoBool(s_Handbrake);
+							if(stringtoBool(s_LS_r)) {
+								light_on = stringtoBool(s_LS_o);
+								hlight_on = stringtoBool(s_LS_h);
+							}
+							if(s_gear == 0) {
+								gearui.innerHTML = "N";
+							} else {
+								gearui.innerHTML = s_gear;
+							}
+							switch(s_IL) {
+								case 0:
+									left_on = false;
+									right_on = false;
+									break;
+								case 1:
+									left_on = true;
+									right_on = false;
+									break;
+								case 2:
+									left_on = false;
+									right_on = true;
+									break;
+								case 3:
+									left_on = true;
+									right_on = true;
+									break;
+								default:
+									left_on = false;
+									right_on = false;
+									break;
+							}
+							break;
+					}
+				}
+				ws.onclose = function(event) {
+					connected = false;
+					console.log("Connect close, status: " + this.readyState);
+					websocket();
+				};
+				ws.onerror = function(event) {
+					console.log("WebSocket error.");
+				};
+			}
+			function heartbeat() {
+				if(connected) {
+					var senddata = "{\"action\":\"heartbeat\",\"token\":\"" + $("#token").val() + "\"}";
+					ws.send(senddata);
+					return;
+				}
+			}
+			function setClient(id) {
+				if(connected) {
+					var senddata = "{\"action\":\"setclient\",\"value\":\"" + id + "\"}";
+					ws.send(senddata);
+					return;
+				}
+			}
+			function booltoString(str) {
+				if(str) {
+					return "true";
+				} else {
+					return "false";
+				}
+			}
+			function stringtoBool(str) {
+				return str == "true";
+			}
+			function connect() {
+				if(c_id != undefined) {
+					var gameids = parseInt(c_id);
+					setClient(gameids);
+				}
+			}
+			var c_id = prompt("输入你在游戏里的编号\n\n提示：可以在游戏里按 ↑ 查看");
+			websocket();
+		</script>
+		<script type="text/javascript" src="js/json2-min.js"></script>
+		<script type="text/javascript" src="js/raphael-min.js"></script>
+		<script type="text/javascript" src="js/gauges-demo.js?s=2"></script>
+	</body>
+</html>
